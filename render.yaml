@@ -1,0 +1,30 @@
+# Exported from https://dashboard.render.com/blueprints
+# Free stack: one web service (app + in-process SMS worker) + Neon Postgres URL.
+
+services:
+  - type: web
+    name: lankaslip
+    runtime: node
+    plan: free
+    region: singapore
+    branch: main
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start
+    healthCheckPath: /login
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      - key: DISPATCH_CHANNEL
+        value: sms
+      - key: NOTIFY_LK_SENDER_ID
+        value: NotifyDEMO
+      # Set these in the Render dashboard (do not commit secrets):
+      # DATABASE_URL          from Neon
+      # APP_URL               https://lankaslip.onrender.com (or your custom domain)
+      # BETTER_AUTH_URL       same as APP_URL
+      # BETTER_AUTH_SECRET
+      # NOTIFY_LK_USER_ID
+      # NOTIFY_LK_API_KEY
+      # SEED_OWNER_EMAIL
+      # SEED_OWNER_PASSWORD
+      # SEED_SHOP_NAME

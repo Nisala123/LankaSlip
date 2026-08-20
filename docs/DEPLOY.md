@@ -1,39 +1,49 @@
-# LankaSlip — go live (GitHub + Railway)
+# LankaSlip — go live (GitHub + Render + Neon)
 
-LankaSlip needs a **web** process, a **worker** process, and **PostgreSQL**.
-Railway is the recommended host.
+Railway trial expired? Use this **free** stack instead:
 
-## 1. Push to GitHub
+| Piece | Free service |
+| --- | --- |
+| Code | GitHub (`Nisala123/LankaSlip`) |
+| App + SMS worker | [Render](https://render.com) free Web Service |
+| Database | [Neon](https://neon.tech) free Postgres |
 
-```bash
-git init
-git add .
-git commit -m "Initial LankaSlip release"
-gh repo create LankaSlip --private --source=. --remote=origin --push
-```
+Render’s free tier does **not** include background workers, so LankaSlip runs the
+queue worker **inside** the web process (default `npm run start`). That is fine
+for a small shop. The free web service **sleeps after ~15 minutes** of no
+traffic; the first request after sleep can take ~30–60s.
 
-Or create an empty repo on github.com, then:
+## 1. Create a free Neon database
 
-```bash
-git remote add origin https://github.com/YOUR_USER/LankaSlip.git
-git branch -M main
-git push -u origin main
-```
+1. Sign up at [neon.tech](https://neon.tech) with GitHub.
+2. Create a project (region close to Sri Lanka / Singapore if available).
+3. Copy the connection string (`DATABASE_URL`, use the pooled URL if Neon shows one).
 
-Never commit `.env`. Only `.env.example` is tracked.
+## 2. Deploy the app on Render
 
-## 2. Deploy on Railway
+1. Sign up at [render.com](https://render.com) with GitHub.
+2. **New → Blueprint** and select repo `LankaSlip`, **or**
+   **New → Web Service** → connect `Nisala123/LankaSlip`.
+3. Settings:
 
-1. Open [railway.app](https://railway.app) and sign in with GitHub.
-2. **New Project → Deploy from GitHub** → select `LankaSlip`.
-3. Add a **PostgreSQL** plugin/service to the project.
-4. In the web service variables, set at least:
+| Field | Value |
+| --- | --- |
+| Runtime | Node |
+| Branch | `main` |
+| Build command | `npm ci && npm run build` |
+| Start command | `npm run start` |
+| Instance type | **Free** |
+
+Important: use `npm run start` (not `start:web`) so the SMS worker starts with
+the app. Do **not** set `SKIP_WORKER=1` on this free deploy.
+
+4. Add environment variables:
 
 ```env
-DATABASE_URL=${{Postgres.DATABASE_URL}}
-APP_URL=https://YOUR_RAILWAY_DOMAIN
-BETTER_AUTH_URL=https://YOUR_RAILWAY_DOMAIN
-BETTER_AUTH_SECRET=generate-with-openssl-rand-base64-32
+DATABASE_URL=postgresql://...neon.tech/...
+APP_URL=https://YOUR-SERVICE.onrender.com
+BETTER_AUTH_URL=https://YOUR-SERVICE.onrender.com
+BETTER_AUTH_SECRET=paste-openssl-rand-base64-32
 DISPATCH_CHANNEL=sms
 NOTIFY_LK_USER_ID=...
 NOTIFY_LK_API_KEY=...
@@ -41,48 +51,53 @@ NOTIFY_LK_SENDER_ID=NotifyDEMO
 SEED_OWNER_EMAIL=you@example.com
 SEED_OWNER_PASSWORD=strong-password
 SEED_SHOP_NAME=Your Shop
-SKIP_WORKER=1
 ```
 
-5. Set the web service start command to:
+Generate a secret locally:
 
 ```bash
-npm run start:web
+openssl rand -base64 32
 ```
 
-Build command:
-
-```bash
-npm run build
-```
-
-6. Add a **second service** from the same GitHub repo for the worker:
-   - Start command: `npm run worker`
-   - Same `DATABASE_URL` and Notify.lk / auth env vars
-   - Do **not** set `SKIP_WORKER` on this service (or leave unset)
-
-7. After first deploy, run once (Railway shell or one-off):
+5. Deploy. When the service is live, open the Render **Shell** (or one-off) and run:
 
 ```bash
 npm run db:push
 npm run db:seed
 ```
 
-8. Attach a custom domain if you have one, then update `APP_URL` and
-   `BETTER_AUTH_URL` to that HTTPS domain.
+6. Open `APP_URL/login` and sign in with the seeded owner.
 
-## 3. Production checklist
+## 3. After you get a custom domain
 
-- [ ] `DISPATCH_CHANNEL=sms` with real Notify.lk credentials
-- [ ] Approved Sender ID (not only `NotifyDEMO`) for production traffic
-- [ ] Strong `BETTER_AUTH_SECRET` and owner password
-- [ ] Public `APP_URL` so SMS receipt links open on customer phones
-- [ ] Worker service is running (SMS stays "Sending" if it is not)
-- [ ] Optional R2 vars for slip storage on ephemeral disks
+Update both:
 
-## 4. Verify
+```env
+APP_URL=https://your-domain.com
+BETTER_AUTH_URL=https://your-domain.com
+```
 
-1. Open `APP_URL/login` and sign in with the seeded owner.
-2. Send a test receipt to your phone.
-3. Confirm SMS arrives and `/r/{token}` opens.
-4. Use **Share on WhatsApp** as the free fallback.
+Redeploy (or restart) so SMS receipt links use the public domain.
+
+## 4. Production checklist
+
+- [ ] Neon `DATABASE_URL` set
+- [ ] `APP_URL` / `BETTER_AUTH_URL` match the live HTTPS URL
+- [ ] Notify.lk credentials set (`DISPATCH_CHANNEL=sms`)
+- [ ] `npm run db:push` + `npm run db:seed` completed
+- [ ] Test SMS to your phone
+- [ ] Optional: Cloudflare R2 for slip images (Render free disk is ephemeral)
+
+## 5. Free-tier behaviour to expect
+
+- First visit after idle sleep can be slow (cold start).
+- SMS sends while the service is awake; after long idle, open the site once
+  before sending if a job seems stuck.
+- Neon free tier stays available; Render free Postgres (if you use it instead)
+  expires after 30 days — prefer Neon.
+
+## 6. Optional later upgrades
+
+- Paid Render worker service for an always-on queue
+- Custom domain on Render
+- R2 for slip storage

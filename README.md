@@ -6,7 +6,7 @@ LankaQR support.
 
 For complete setup (Notify.lk, WhatsApp Cloud optional, webhooks, storage,
 workers), see [`docs/DEVELOPER_GUIDE.md`](docs/DEVELOPER_GUIDE.md).
-To push to GitHub and go live, see [`docs/DEPLOY.md`](docs/DEPLOY.md).
+To go live for free (Render + Neon), see [`docs/DEPLOY.md`](docs/DEPLOY.md).
 
 ## Local setup
 
