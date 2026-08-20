@@ -1,0 +1,14 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: lankaslip
+      POSTGRES_PASSWORD: lankaslip
+      POSTGRES_DB: lankaslip
+    ports:
+      - "5432:5432"
+    volumes:
+      - lankaslip_pg:/var/lib/postgresql/data
+
+volumes:
+  lankaslip_pg:
