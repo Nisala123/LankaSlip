@@ -44,4 +44,9 @@ next-env.d.ts
 # local slip storage fallback
 /data
 
+# Neon / agent tooling
+.agents/
+skills-lock.json
+
+
 lankaslip-tmp/
