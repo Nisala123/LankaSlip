@@ -17,7 +17,8 @@ import {
   newReceiptToken,
 } from "@/server/domain/references";
 import { enqueueSendReceipt } from "@/server/jobs/boss";
-import { dispatchChannel } from "@/lib/env";
+import { dispatchChannel, dispatchMode } from "@/lib/env";
+import { sendReceiptJob } from "@/server/jobs/send-receipt";
 
 export const createReceiptSchema = z.object({
   phone: z.string().min(9).max(20),
@@ -161,7 +162,22 @@ export async function createReceipt(opts: {
     throw error;
   }
 
-  await enqueueSendReceipt(messageRow.id);
+  if (dispatchMode() === "sync") {
+    try {
+      await sendReceiptJob(messageRow.id);
+    } catch {
+      // Status/error already stored on the message row by sendReceiptJob.
+    }
+    const [freshMessage] = await db
+      .select()
+      .from(messages)
+      .where(eq(messages.id, messageRow.id))
+      .limit(1);
+    if (freshMessage) messageRow = freshMessage;
+  } else {
+    await enqueueSendReceipt(messageRow.id);
+  }
+
   await writeAudit({
     tenantId: opts.tenantId,
     userId: opts.userId,
@@ -172,6 +188,7 @@ export async function createReceipt(opts: {
     metadata: {
       referenceNumber: receiptRow.referenceNumber,
       paymentStatus: receiptRow.paymentStatus,
+      dispatchMode: dispatchMode(),
     },
   });
 
@@ -312,6 +329,20 @@ export async function retryMessage(tenantId: string, receiptId: string) {
       status: "queued",
     })
     .returning();
+
+  if (dispatchMode() === "sync") {
+    try {
+      await sendReceiptJob(queued.id);
+    } catch {
+      // Status/error already stored on the message row.
+    }
+    const [fresh] = await db
+      .select()
+      .from(messages)
+      .where(eq(messages.id, queued.id))
+      .limit(1);
+    return fresh ?? queued;
+  }
 
   await enqueueSendReceipt(queued.id);
   return queued;

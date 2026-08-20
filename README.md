@@ -6,7 +6,8 @@ LankaQR support.
 
 For complete setup (Notify.lk, WhatsApp Cloud optional, webhooks, storage,
 workers), see [`docs/DEVELOPER_GUIDE.md`](docs/DEVELOPER_GUIDE.md).
-To go live for free (Render + Neon), see [`docs/DEPLOY.md`](docs/DEPLOY.md).
+To go live without a credit card (Vercel Hobby + Neon), see
+[`docs/DEPLOY.md`](docs/DEPLOY.md).
 
 ## Local setup
 

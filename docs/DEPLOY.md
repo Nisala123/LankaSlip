@@ -1,50 +1,38 @@
-# LankaSlip — go live (GitHub + Render + Neon)
+# LankaSlip — go live (no credit card)
 
-Railway trial expired? Use this **free** stack instead:
+Railway and Render free tiers now ask for a card. Use this stack instead:
 
-| Piece | Free service |
-| --- | --- |
-| Code | GitHub (`Nisala123/LankaSlip`) |
-| App + SMS worker | [Render](https://render.com) free Web Service |
-| Database | [Neon](https://neon.tech) free Postgres |
+| Piece | Free service | Card required? |
+| --- | --- | --- |
+| Code | GitHub | No |
+| Database | [Neon](https://neon.tech) (already set up) | No |
+| App hosting | [Vercel Hobby](https://vercel.com) | No |
 
-Render’s free tier does **not** include background workers, so LankaSlip runs the
-queue worker **inside** the web process (default `npm run start`). That is fine
-for a small shop. The free web service **sleeps after ~15 minutes** of no
-traffic; the first request after sleep can take ~30–60s.
+On Vercel, SMS is sent **inside the API request** (sync mode). No separate
+worker service is needed.
 
-## 1. Create a free Neon database
+> Vercel Hobby is for personal / non-commercial use. If this becomes a paid
+> shop product, upgrade to Vercel Pro later (or move to a paid VPS).
 
-1. Sign up at [neon.tech](https://neon.tech) with GitHub.
-2. Create a project (region close to Sri Lanka / Singapore if available).
-3. Copy the connection string (`DATABASE_URL`, use the pooled URL if Neon shows one).
+## 1. Neon (already done)
 
-## 2. Deploy the app on Render
+Your project already has a Neon database. Copy `DATABASE_URL` from `.env` or the
+Neon console.
 
-1. Sign up at [render.com](https://render.com) with GitHub.
-2. **New → Blueprint** and select repo `LankaSlip`, **or**
-   **New → Web Service** → connect `Nisala123/LankaSlip`.
-3. Settings:
+## 2. Deploy on Vercel
 
-| Field | Value |
-| --- | --- |
-| Runtime | Node |
-| Branch | `main` |
-| Build command | `npm ci && npm run build` |
-| Start command | `npm run start` |
-| Instance type | **Free** |
-
-Important: use `npm run start` (not `start:web`) so the SMS worker starts with
-the app. Do **not** set `SKIP_WORKER=1` on this free deploy.
-
+1. Open [vercel.com](https://vercel.com) and sign in with GitHub (Hobby = free).
+2. **Add New Project** → import `Nisala123/LankaSlip`.
+3. Framework: Next.js (auto-detected).
 4. Add environment variables:
 
 ```env
-DATABASE_URL=postgresql://...neon.tech/...
-APP_URL=https://YOUR-SERVICE.onrender.com
-BETTER_AUTH_URL=https://YOUR-SERVICE.onrender.com
+DATABASE_URL=postgresql://...neon.tech/...sslmode=require
+APP_URL=https://YOUR-PROJECT.vercel.app
+BETTER_AUTH_URL=https://YOUR-PROJECT.vercel.app
 BETTER_AUTH_SECRET=paste-openssl-rand-base64-32
 DISPATCH_CHANNEL=sms
+DISPATCH_MODE=sync
 NOTIFY_LK_USER_ID=...
 NOTIFY_LK_API_KEY=...
 NOTIFY_LK_SENDER_ID=NotifyDEMO
@@ -53,51 +41,52 @@ SEED_OWNER_PASSWORD=strong-password
 SEED_SHOP_NAME=Your Shop
 ```
 
-Generate a secret locally:
+`DISPATCH_MODE=sync` is auto-detected on Vercel, but set it explicitly anyway.
+
+5. Deploy.
+6. After the first successful deploy, run schema + seed **once** from your laptop
+   against Neon (already done if you finished Neon setup). If you need to re-seed:
 
 ```bash
-openssl rand -base64 32
-```
-
-5. Deploy. When the service is live, open the Render **Shell** (or one-off) and run:
-
-```bash
+# uses DATABASE_URL from .env pointing at Neon
 npm run db:push
 npm run db:seed
 ```
 
-6. Open `APP_URL/login` and sign in with the seeded owner.
+7. Open `https://YOUR-PROJECT.vercel.app/login` and sign in.
 
-## 3. After you get a custom domain
+## 3. Custom domain (optional)
 
-Update both:
+In Vercel → Project → Domains, add your domain, then update:
 
 ```env
 APP_URL=https://your-domain.com
 BETTER_AUTH_URL=https://your-domain.com
 ```
 
-Redeploy (or restart) so SMS receipt links use the public domain.
+Redeploy so SMS links use that domain.
 
-## 4. Production checklist
+## 4. Checklist
 
-- [ ] Neon `DATABASE_URL` set
+- [ ] Neon `DATABASE_URL` set in Vercel
 - [ ] `APP_URL` / `BETTER_AUTH_URL` match the live HTTPS URL
-- [ ] Notify.lk credentials set (`DISPATCH_CHANNEL=sms`)
-- [ ] `npm run db:push` + `npm run db:seed` completed
+- [ ] Notify.lk credentials set
+- [ ] Owner can log in
 - [ ] Test SMS to your phone
-- [ ] Optional: Cloudflare R2 for slip images (Render free disk is ephemeral)
+- [ ] **Share on WhatsApp** works as free fallback
 
-## 5. Free-tier behaviour to expect
+## 5. Local development
 
-- First visit after idle sleep can be slow (cold start).
-- SMS sends while the service is awake; after long idle, open the site once
-  before sending if a job seems stuck.
-- Neon free tier stays available; Render free Postgres (if you use it instead)
-  expires after 30 days — prefer Neon.
+```env
+DISPATCH_MODE=queue   # optional; uses pg-boss worker
+# or
+DISPATCH_MODE=sync    # same behaviour as Vercel
+```
 
-## 6. Optional later upgrades
+## 6. If Vercel also blocks you
 
-- Paid Render worker service for an always-on queue
-- Custom domain on Render
-- R2 for slip storage
+Alternatives that are usually free without a card for small apps:
+
+1. Keep using **localhost + Cloudflare Tunnel** (`cloudflared`) for demos
+2. **Netlify** free (similar serverless limits; may need adapter work)
+3. A cheap VPS later (Hetzner / DigitalOcean) when you can pay ~$4–6/month
