@@ -28,6 +28,7 @@ Neon console.
 
 ```env
 DATABASE_URL=postgresql://...neon.tech/...sslmode=require
+# Must be your real https://….vercel.app URL — NOT localhost
 APP_URL=https://YOUR-PROJECT.vercel.app
 BETTER_AUTH_URL=https://YOUR-PROJECT.vercel.app
 BETTER_AUTH_SECRET=paste-openssl-rand-base64-32
@@ -69,7 +70,8 @@ Redeploy so SMS links use that domain.
 ## 4. Checklist
 
 - [ ] Neon `DATABASE_URL` set in Vercel
-- [ ] `APP_URL` / `BETTER_AUTH_URL` match the live HTTPS URL
+- [ ] `APP_URL` / `BETTER_AUTH_URL` match the live HTTPS URL (not `localhost`)
+- [ ] Login works — if you see `Invalid origin`, fix those two env vars and redeploy
 - [ ] Notify.lk credentials set
 - [ ] Owner can log in
 - [ ] Test SMS to your phone
