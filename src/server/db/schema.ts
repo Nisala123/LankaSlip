@@ -28,6 +28,18 @@ export const vendorProfiles = pgTable("vendor_profiles", {
     .unique(),
   shopName: text("shop_name").notNull(),
   logoKey: text("logo_key"),
+  /** Letterhead / receipt template */
+  addressLine1: text("address_line1"),
+  addressLine2: text("address_line2"),
+  city: text("city"),
+  contactPhone: text("contact_phone"),
+  contactEmail: text("contact_email"),
+  website: text("website"),
+  receiptTitle: text("receipt_title").default("PAYMENT RECEIPT"),
+  receiptFooter: text("receipt_footer").default(
+    "Thank you for your payment.",
+  ),
+  authorizedBy: text("authorized_by"),
   bankName: text("bank_name"),
   accountName: text("account_name"),
   accountNumber: text("account_number"),

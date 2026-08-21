@@ -6,13 +6,32 @@ import { db } from "@/server/db";
 import { vendorProfiles } from "@/server/db/schema";
 import { writeAudit } from "@/server/domain/audit";
 
+const optionalText = (max: number) =>
+  z
+    .string()
+    .max(max)
+    .optional()
+    .transform((value) => {
+      const trimmed = value?.trim();
+      return trimmed ? trimmed : null;
+    });
+
 const schema = z.object({
   shopName: z.string().min(2).max(80),
-  bankName: z.string().max(80).optional(),
-  accountName: z.string().max(80).optional(),
-  accountNumber: z.string().max(40).optional(),
-  branch: z.string().max(80).optional(),
-  lankaQrPayload: z.string().max(2000).optional(),
+  addressLine1: optionalText(120),
+  addressLine2: optionalText(120),
+  city: optionalText(80),
+  contactPhone: optionalText(40),
+  contactEmail: optionalText(120),
+  website: optionalText(120),
+  receiptTitle: optionalText(80),
+  receiptFooter: optionalText(300),
+  authorizedBy: optionalText(120),
+  bankName: optionalText(80),
+  accountName: optionalText(80),
+  accountNumber: optionalText(40),
+  branch: optionalText(80),
+  lankaQrPayload: optionalText(2000),
 });
 
 export async function GET() {
@@ -35,12 +54,30 @@ export async function PUT(request: Request) {
   }
   const parsed = schema.safeParse(await request.json());
   if (!parsed.success) {
-    return NextResponse.json({ error: "Check shop details and try again" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Check shop details and try again" },
+      { status: 400 },
+    );
   }
+  const data = parsed.data;
   await db
     .update(vendorProfiles)
     .set({
-      ...parsed.data,
+      shopName: data.shopName,
+      addressLine1: data.addressLine1,
+      addressLine2: data.addressLine2,
+      city: data.city,
+      contactPhone: data.contactPhone,
+      contactEmail: data.contactEmail,
+      website: data.website,
+      receiptTitle: data.receiptTitle ?? "PAYMENT RECEIPT",
+      receiptFooter: data.receiptFooter ?? "Thank you for your payment.",
+      authorizedBy: data.authorizedBy,
+      bankName: data.bankName,
+      accountName: data.accountName,
+      accountNumber: data.accountNumber,
+      branch: data.branch,
+      lankaQrPayload: data.lankaQrPayload,
       updatedAt: new Date(),
     })
     .where(eq(vendorProfiles.tenantId, session.user.tenantId));

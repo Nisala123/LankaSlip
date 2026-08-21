@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { formatLkr } from "@/server/domain/money";
+import { ReceiptDocument } from "@/components/receipt-document";
 import { getPublicReceipt } from "@/server/domain/receipts";
 import { paymentQrDataUrl } from "@/server/domain/qr";
 import { getSignedReadUrl } from "@/server/storage";
@@ -14,7 +14,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
     return { title: "Receipt", robots: { index: false, follow: false } };
   }
   return {
-    title: `${loaded.profile.shopName} receipt`,
+    title: `${loaded.profile.shopName} — Payment Receipt`,
     robots: { index: false, follow: false },
   };
 }
@@ -26,7 +26,7 @@ export default async function PublicReceiptPage({ params }: Params) {
     notFound();
   }
 
-  const { receipt, profile } = loaded;
+  const { receipt, profile, customer } = loaded;
   const pending = receipt.paymentStatus === "pending";
   const qr = pending
     ? await paymentQrDataUrl({
@@ -48,85 +48,55 @@ export default async function PublicReceiptPage({ params }: Params) {
       `/api/public/slips/${receipt.token}`;
   }
 
+  const logoUrl = profile.logoKey
+    ? `/api/public/logos/${receipt.token}`
+    : null;
+
+  const addressLines = [
+    profile.addressLine1,
+    profile.addressLine2,
+    profile.city,
+  ].filter((line): line is string => Boolean(line?.trim()));
+
+  const contactLines = [
+    profile.contactPhone,
+    profile.contactEmail,
+    profile.website,
+  ].filter((line): line is string => Boolean(line?.trim()));
+
   return (
-    <main className="mx-auto min-h-full w-full max-w-md px-4 py-8">
-      <p className="text-xs font-medium uppercase tracking-[0.14em] text-muted">
-        Receipt
-      </p>
-      <h1 className="mt-2 text-2xl font-semibold">{profile.shopName}</h1>
-      <p className="mt-1 text-sm text-muted">{receipt.referenceNumber}</p>
-
-      <section className="mt-6 rounded-2xl bg-card p-5">
-        <p className="text-sm text-muted">Amount</p>
-        <p className="text-3xl font-semibold">LKR {formatLkr(receipt.amountCents)}</p>
-        <p
-          className={`mt-2 text-sm font-medium ${
-            pending ? "text-pending" : "text-accent"
-          }`}
-        >
-          {pending ? "Payment pending" : "Payment received"}
-        </p>
-        {receipt.invoiceId ? (
-          <p className="mt-3 text-sm">Invoice {receipt.invoiceId}</p>
-        ) : null}
-        {receipt.itemDetails ? (
-          <p className="mt-2 whitespace-pre-wrap text-sm">{receipt.itemDetails}</p>
-        ) : null}
-      </section>
-
-      {slipUrl ? (
-        <section className="mt-4 rounded-2xl bg-card p-4">
-          <p className="mb-2 text-sm text-muted">Bank slip</p>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={slipUrl} alt="Payment slip" className="w-full rounded-xl" />
-        </section>
-      ) : null}
-
-      {pending ? (
-        <section className="mt-4 rounded-2xl bg-card p-5">
-          <h2 className="font-semibold">Pay now</h2>
-          <p className="mt-1 text-sm text-muted">
-            Scan the QR or transfer using the bank details below. Use the
-            receipt number as the reference.
-          </p>
-          {qr ? (
-            <div className="mt-4 flex justify-center">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={qr} alt="Payment QR" className="h-52 w-52" />
-            </div>
-          ) : null}
-          <dl className="mt-4 space-y-2 text-sm">
-            {profile.bankName ? (
-              <div className="flex justify-between gap-4">
-                <dt className="text-muted">Bank</dt>
-                <dd>{profile.bankName}</dd>
-              </div>
-            ) : null}
-            {profile.branch ? (
-              <div className="flex justify-between gap-4">
-                <dt className="text-muted">Branch</dt>
-                <dd>{profile.branch}</dd>
-              </div>
-            ) : null}
-            {profile.accountName ? (
-              <div className="flex justify-between gap-4">
-                <dt className="text-muted">Account name</dt>
-                <dd className="text-right">{profile.accountName}</dd>
-              </div>
-            ) : null}
-            {profile.accountNumber ? (
-              <div className="flex justify-between gap-4">
-                <dt className="text-muted">Account no.</dt>
-                <dd>{profile.accountNumber}</dd>
-              </div>
-            ) : null}
-            <div className="flex justify-between gap-4">
-              <dt className="text-muted">Reference</dt>
-              <dd>{receipt.referenceNumber}</dd>
-            </div>
-          </dl>
-        </section>
-      ) : null}
+    <main className="min-h-full bg-[#efeae2] print:bg-white">
+      <ReceiptDocument
+        data={{
+          token: receipt.token,
+          shopName: profile.shopName,
+          logoUrl,
+          addressLines,
+          contactLines,
+          receiptTitle: profile.receiptTitle ?? "PAYMENT RECEIPT",
+          receiptFooter:
+            profile.receiptFooter ?? "Thank you for your payment.",
+          authorizedBy: profile.authorizedBy,
+          referenceNumber: receipt.referenceNumber,
+          createdAt: receipt.createdAt,
+          customerName: customer?.name ?? null,
+          customerPhone: customer?.phoneE164 ?? null,
+          invoiceId: receipt.invoiceId,
+          itemDetails: receipt.itemDetails,
+          amountCents: receipt.amountCents,
+          paymentStatus: receipt.paymentStatus,
+          slipUrl,
+          pendingPay: pending
+            ? {
+                qrDataUrl: qr,
+                bankName: profile.bankName,
+                branch: profile.branch,
+                accountName: profile.accountName,
+                accountNumber: profile.accountNumber,
+              }
+            : null,
+        }}
+      />
     </main>
   );
 }

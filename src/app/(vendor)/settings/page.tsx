@@ -14,8 +14,19 @@ export default async function SettingsPage() {
 
   return (
     <SettingsForm
+      hasLogo={Boolean(profile?.logoKey)}
       initial={{
         shopName: profile?.shopName ?? "",
+        addressLine1: profile?.addressLine1 ?? "",
+        addressLine2: profile?.addressLine2 ?? "",
+        city: profile?.city ?? "",
+        contactPhone: profile?.contactPhone ?? "",
+        contactEmail: profile?.contactEmail ?? "",
+        website: profile?.website ?? "",
+        receiptTitle: profile?.receiptTitle ?? "PAYMENT RECEIPT",
+        receiptFooter:
+          profile?.receiptFooter ?? "Thank you for your payment.",
+        authorizedBy: profile?.authorizedBy ?? "",
         bankName: profile?.bankName ?? "",
         accountName: profile?.accountName ?? "",
         accountNumber: profile?.accountNumber ?? "",
